@@ -1,6 +1,6 @@
 from django.db import models
 from django.core.validators import MinValueValidator
-
+from phonenumber_field.modelfields import PhoneNumberField
 
 class Restaurant(models.Model):
     name = models.CharField('название', max_length=50)
@@ -66,3 +66,15 @@ class RestaurantMenuItem(models.Model):
         unique_together = [
             ['restaurant', 'product']
         ]
+
+class Order(models.Model):
+    firstname = models.CharField(max_length=200)
+    lastname = models.CharField(max_length=200)
+    phonenumber = PhoneNumberField()
+    address = models.TextField()
+    
+
+class OrderPosition(models.Model):
+    order = models.ForeignKey(Order, on_delete=models.SET_NULL, null=True)
+    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True)
+    quantity = models.IntegerField(default=1)
