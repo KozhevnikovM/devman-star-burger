@@ -3,6 +3,9 @@ import json
 from django.http import JsonResponse
 from django.templatetags.static import static
 
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+
 
 from .models import Product
 from .models import Order, OrderPosition
@@ -59,16 +62,15 @@ def product_list_api(request):
         'indent': 4,
     })
 
-
+@api_view(['POST'])
 def register_order(request):
-    # TODO это лишь заглушка
     from pprint import pprint
-    raw_order = json.loads(request.body.decode())
+    raw_order = request.data
+    pprint(raw_order)
     order_positions = raw_order.pop('products')
     order = Order.objects.create(**raw_order)
     
     for position in order_positions:
-        pprint(position)
         product = {
             'product': Product.objects.get(id=position['product']),
             'order': order,
@@ -76,5 +78,8 @@ def register_order(request):
         }
         OrderPosition.objects.create(**product)
     
-    pprint(raw_order)
-    return JsonResponse({})
+    return Response({
+        'hello':'world'
+    })
+
+
