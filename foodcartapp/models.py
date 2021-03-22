@@ -73,6 +73,9 @@ class Order(models.Model):
     phonenumber = PhoneNumberField()
     address = models.TextField()
     
+    def __str__(self):
+        return f'{self.firstname} {self.lastname}'
+    
 
 class OrderPosition(models.Model):
     order = models.ForeignKey(Order, on_delete=models.SET_NULL, null=True)

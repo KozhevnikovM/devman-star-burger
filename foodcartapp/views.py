@@ -3,6 +3,7 @@ import json
 from django.http import JsonResponse
 from django.templatetags.static import static
 
+from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
@@ -66,10 +67,21 @@ def product_list_api(request):
 def register_order(request):
     from pprint import pprint
     raw_order = request.data
-    pprint(raw_order)
+    required_keys = ['address', 'firstname', 'lastname', 'phonenumber', 'products']
+
+    order_ok = all(key in raw_order.keys() for key in required_keys) \
+        and raw_order['products'] \
+        and isinstance(raw_order['products'], list)
+
+    if not order_ok:
+        return Response(
+            {'status': 'error'},
+            status=status.HTTP_406_NOT_ACCEPTABLE
+        )
+
     order_positions = raw_order.pop('products')
     order = Order.objects.create(**raw_order)
-    
+
     for position in order_positions:
         product = {
             'product': Product.objects.get(id=position['product']),
@@ -79,7 +91,7 @@ def register_order(request):
         OrderPosition.objects.create(**product)
     
     return Response({
-        'hello':'world'
+        'status': 'ok'
     })
 
 
