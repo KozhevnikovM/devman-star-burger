@@ -68,10 +68,14 @@ def register_order(request):
     from pprint import pprint
     raw_order = request.data
     required_keys = ['address', 'firstname', 'lastname', 'phonenumber', 'products']
-
+    print(raw_order)
     order_ok = all(key in raw_order.keys() for key in required_keys) \
-        and raw_order['products'] \
-        and isinstance(raw_order['products'], list)
+        and all(raw_order[key] for key in raw_order.keys()) \
+        and isinstance(raw_order['products'], list) \
+        and all(isinstance(raw_order[key], str) for key in required_keys[:4]) \
+        and all(isinstance(product['product'], int) for product in raw_order['products']) \
+        and all(Product.objects.filter(id=product['product']) for product in raw_order['products'])
+    print(order_ok)
 
     if not order_ok:
         return Response(
