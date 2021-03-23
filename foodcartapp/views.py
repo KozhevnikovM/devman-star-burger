@@ -6,11 +6,24 @@ from django.templatetags.static import static
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from rest_framework.serializers import Serializer, ModelSerializer
 
 
 from .models import Product
 from .models import Order, OrderPosition
 
+
+class OrderPositionSerializer(ModelSerializer):
+    class Meta:
+        model = OrderPosition
+        fields = ['product', 'quantity']
+
+class OrderSerializer(ModelSerializer):
+    products = OrderPositionSerializer(many=True)
+
+    class Meta:
+        model = Order
+        fields = ['address', 'firstname', 'lastname', 'phonenumber', 'products']
 
 def banners_list_api(request):
     # FIXME move data to db?
@@ -67,35 +80,25 @@ def product_list_api(request):
 def register_order(request):
     from pprint import pprint
     raw_order = request.data
+    pprint(raw_order)
     required_keys = ['address', 'firstname', 'lastname', 'phonenumber', 'products']
-    print(raw_order)
-    order_ok = all(key in raw_order.keys() for key in required_keys) \
-        and all(raw_order[key] for key in raw_order.keys()) \
-        and isinstance(raw_order['products'], list) \
-        and all(isinstance(raw_order[key], str) for key in required_keys[:4]) \
-        and all(isinstance(product['product'], int) for product in raw_order['products']) \
-        and all(Product.objects.filter(id=product['product']) for product in raw_order['products'])
-    print(order_ok)
+    serializer = OrderSerializer(data=raw_order)
+    serializer.is_valid(raise_exception=True)
+    validated_data = serializer.validated_data
+    products_fields = list(validated_data['products'])
 
-    if not order_ok:
-        return Response(
-            {'status': 'error'},
-            status=status.HTTP_406_NOT_ACCEPTABLE
-        )
-
-    order_positions = raw_order.pop('products')
-    order = Order.objects.create(**raw_order)
-
-    for position in order_positions:
-        product = {
-            'product': Product.objects.get(id=position['product']),
-            'order': order,
-            'quantity': position['quantity']
-        }
-        OrderPosition.objects.create(**product)
+    order = Order.objects.create(
+        address=validated_data['address'],
+        firstname=validated_data['firstname'],
+        lastname=validated_data['lastname'],
+        phonenumber=validated_data['phonenumber']
+    )
     
+    products = [OrderPosition(order=order, **fields) for fields in products_fields]
+    OrderPosition.objects.bulk_create(products)
+
     return Response({
-        'status': 'ok'
+        'order_id': order.id
     })
 
 

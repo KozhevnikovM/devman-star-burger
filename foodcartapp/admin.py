@@ -117,6 +117,6 @@ class OrderAdmin(admin.ModelAdmin):
         InlineOrderPosition
     ]
 
-@admin.register(OrderPosition)
-class OrderPositionAdmin(admin.ModelAdmin):
-    pass
+# @admin.register(OrderPosition)
+# class OrderPositionAdmin(admin.ModelAdmin):
+#     pass

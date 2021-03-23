@@ -72,12 +72,21 @@ class Order(models.Model):
     lastname = models.CharField(max_length=200)
     phonenumber = PhoneNumberField()
     address = models.TextField()
+    products = models.ManyToManyField(Product, through='OrderPosition')
     
     def __str__(self):
         return f'{self.firstname} {self.lastname}'
     
 
 class OrderPosition(models.Model):
-    order = models.ForeignKey(Order, on_delete=models.SET_NULL, null=True)
-    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True)
-    quantity = models.IntegerField(default=1)
+    order = models.ForeignKey(Order, on_delete=models.SET_NULL, null=True, verbose_name='Заказ')
+    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, verbose_name='Товар')
+    quantity = models.IntegerField('Количество', default=1)
+
+    def __str__(self):
+        return f'{self.product}'
+    
+
+    class Meta:
+        verbose_name = 'Товар'
+        verbose_name_plural = 'Заказанные товары'
