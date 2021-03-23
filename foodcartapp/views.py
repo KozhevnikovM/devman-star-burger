@@ -18,12 +18,14 @@ class OrderPositionSerializer(ModelSerializer):
         model = OrderPosition
         fields = ['product', 'quantity']
 
+
 class OrderSerializer(ModelSerializer):
-    products = OrderPositionSerializer(many=True)
+    products = OrderPositionSerializer(many=True, write_only=True)
 
     class Meta:
         model = Order
-        fields = ['address', 'firstname', 'lastname', 'phonenumber', 'products']
+        fields = '__all__'
+
 
 def banners_list_api(request):
     # FIXME move data to db?
@@ -96,9 +98,8 @@ def register_order(request):
     
     products = [OrderPosition(order=order, **fields) for fields in products_fields]
     OrderPosition.objects.bulk_create(products)
+    response = OrderSerializer(instance=order)
 
-    return Response({
-        'order_id': order.id
-    })
+    return Response(response.data)
 
 
