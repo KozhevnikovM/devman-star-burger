@@ -7,9 +7,7 @@ from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import views as auth_views
 
-
-from foodcartapp.models import Product, Restaurant
-
+from foodcartapp.models import Product, Restaurant, Order
 
 class Login(forms.Form):
     username = forms.CharField(
@@ -95,8 +93,13 @@ def view_restaurants(request):
     })
 
 
+# @api_view(('GET',))
 @user_passes_test(is_manager, login_url='restaurateur:login')
 def view_orders(request):
-    return render(request, template_name='order_items.html', context={
-        # TODO заглушка для нереализованного функционала
+    # orders = OrderSerializer(Order.objects.all(), many=True)
+    # print(orders.data)
+    # return Response(orders.data, template_name='order_items.html', content_type='text/html')
+    return render(request, template_name="order_items.html", context={
+        'orders': Order.objects.all(),
     })
+
