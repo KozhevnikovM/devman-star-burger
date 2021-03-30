@@ -2,6 +2,7 @@ import json
 
 from django.http import JsonResponse
 from django.templatetags.static import static
+from django.db import transaction
 
 from rest_framework import status
 from rest_framework.decorators import api_view
@@ -79,7 +80,7 @@ def product_list_api(request):
     })
 
 
-
+@transaction.atomic
 @api_view(['POST'])
 def register_order(request):
     from pprint import pprint
@@ -106,7 +107,7 @@ def register_order(request):
     products = [OrderPosition(order=order, **fields) for fields in products_fields]
     OrderPosition.objects.bulk_create(products)
     response = OrderSerializer(instance=order)
+    
 
     return Response(response.data)
-
 
