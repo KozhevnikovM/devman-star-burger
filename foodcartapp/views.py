@@ -78,6 +78,8 @@ def product_list_api(request):
         'indent': 4,
     })
 
+
+
 @api_view(['POST'])
 def register_order(request):
     from pprint import pprint
@@ -88,6 +90,11 @@ def register_order(request):
     serializer.is_valid(raise_exception=True)
     validated_data = serializer.validated_data
     products_fields = list(validated_data['products'])
+    
+    for field in products_fields:
+        field['current_price'] = field['product'].price
+
+    pprint(products_fields)
 
     order = Order.objects.create(
         address=validated_data['address'],

@@ -109,7 +109,9 @@ class ProductAdmin(admin.ModelAdmin):
 class InlineOrderPosition(admin.TabularInline):
     model = OrderPosition
     extra = 0
-
+    # raw_id_fields = ['product']
+    fields = ['product', 'current_price', 'quantity']
+    # readonly_fields = ['product', 'quantity']
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):

@@ -67,21 +67,60 @@ class RestaurantMenuItem(models.Model):
             ['restaurant', 'product']
         ]
 
+class OrderQuerySet(models.QuerySet):
+    def total(self):
+        subtotal = models.ExpressionWrapper(
+            models.F('product_position__current_price') \
+                * models.F('product_position__quantity'),
+            output_field=models.DecimalField()
+        )
+
+        return self.annotate(
+            total=models.Sum(subtotal)
+        )
+
+
 class Order(models.Model):
     firstname = models.CharField(max_length=200)
     lastname = models.CharField(max_length=200)
     phonenumber = PhoneNumberField()
     address = models.TextField()
     products = models.ManyToManyField(Product, through='OrderPosition')
+
+    objects = OrderQuerySet.as_manager()
     
     def __str__(self):
         return f'{self.firstname} {self.lastname}'
     
 
 class OrderPosition(models.Model):
-    order = models.ForeignKey(Order, on_delete=models.SET_NULL, null=True, verbose_name='Заказ')
-    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, verbose_name='Товар')
+    order = models.ForeignKey(
+        Order, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        verbose_name='Заказ',
+        related_name='product_position'
+    )
+    product = models.ForeignKey(
+        Product, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        verbose_name='Товар'
+    )
+
+    current_price = models.DecimalField(
+        'Цена на момент заказа', 
+        max_digits=8, 
+        decimal_places=2,
+        validators=[MinValueValidator(0)],
+        blank=True,
+        null=True
+    )
+
     quantity = models.IntegerField('Количество', default=1)
+
+    def get_price(self):
+        return self.product.price
 
     def __str__(self):
         return f'{self.product}'
