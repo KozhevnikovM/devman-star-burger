@@ -87,12 +87,17 @@ class Order(models.Model):
         ('P', 'В работе'),
         ('C', 'Выполнен')
     ]
+    PAYMENT_METHOD = [
+        ('C', 'Наличными при доставке'),
+        ('O', 'Картой онлайн')
+    ]
     firstname = models.CharField(max_length=200)
     lastname = models.CharField(max_length=200)
     phonenumber = PhoneNumberField()
     address = models.TextField()
     products = models.ManyToManyField(Product, through='OrderPosition')
     status = models.CharField('Статус', max_length=2, choices=STATUSES, default='N')
+    payment_method = models.CharField('Способ оплаты', max_length=2, choices=PAYMENT_METHOD, default='C')
     comment = models.TextField('Комментарий', blank=True)
     created_time = models.DateTimeField('Заказ создан', default=timezone.now)
     called_time = models.DateTimeField('Время звонка', null=True, blank=True)
