@@ -92,6 +92,7 @@ class Order(models.Model):
     address = models.TextField()
     products = models.ManyToManyField(Product, through='OrderPosition')
     status = models.CharField('Статус', max_length=2, choices=STATUSES, default='N')
+    comment = models.TextField('Комментарий', blank=True)
 
     objects = OrderQuerySet.as_manager()
     
