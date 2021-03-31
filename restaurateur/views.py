@@ -96,11 +96,8 @@ def view_restaurants(request):
 # @api_view(('GET',))
 @user_passes_test(is_manager, login_url='restaurateur:login')
 def view_orders(request):
-    # from django.db.models import Sum
-    # orders = Order.objects.all()
-    # subtotals = orders.positions.get_subtotal()
-    # subtotals
     return render(request, template_name="order_items.html", context={
         'orders': Order.objects.total(),
+        'orders_page': orders_page
     })
 

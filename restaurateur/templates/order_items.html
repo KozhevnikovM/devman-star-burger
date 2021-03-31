@@ -28,7 +28,7 @@
         <td>{{order.phonenumber}}</td>
         <td>{{order.address}}</td>
         <td>{{order.total}}</td>
-        <td><a href="{% url 'admin:foodcartapp_order_change' order.id %}" target="_blank">Редактировать</a></td>
+        <td><a href="{% url 'admin:foodcartapp_order_change' order.id|urlencode %}?next={{request.path|urlencode}}" target="_blank">Редактировать</a></td>
       </tr>
     {% endfor %}
    </table>
