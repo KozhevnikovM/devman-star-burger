@@ -125,4 +125,4 @@ class OrderAdmin(admin.ModelAdmin):
             redirect_page = request.GET['next']
             return redirect(redirect_page)
         else:
-            return res
+            return response

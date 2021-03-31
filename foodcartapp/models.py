@@ -81,11 +81,17 @@ class OrderQuerySet(models.QuerySet):
 
 
 class Order(models.Model):
+    STATUSES = [
+        ('N', 'Новый'),
+        ('P', 'В работе'),
+        ('C', 'Выполнен')
+    ]
     firstname = models.CharField(max_length=200)
     lastname = models.CharField(max_length=200)
     phonenumber = PhoneNumberField()
     address = models.TextField()
     products = models.ManyToManyField(Product, through='OrderPosition')
+    status = models.CharField('Статус', max_length=2, choices=STATUSES, default='N')
 
     objects = OrderQuerySet.as_manager()
     
