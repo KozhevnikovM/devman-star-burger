@@ -112,13 +112,16 @@ class InlineOrderPosition(admin.TabularInline):
     extra = 0
     # raw_id_fields = ['product']
     fields = ['product', 'current_price', 'quantity']
-    # readonly_fields = ['product', 'quantity']
+    readonly_fields = ['product']
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
+    raw_id_fields = ['restaurants']
+
     inlines = [
         InlineOrderPosition
     ]
+
     def response_change(self, request, obj):
         response = super().response_change(request, obj)
         if "next" in request.GET and url_has_allowed_host_and_scheme(request.GET['next'], None):

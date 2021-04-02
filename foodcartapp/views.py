@@ -11,8 +11,16 @@ from rest_framework.serializers import Serializer, ModelSerializer
 
 
 from .models import Product
-from .models import Order, OrderPosition
+from .models import Order, OrderPosition, RestaurantMenuItem
 
+def get_product_restaurant(product):
+    menu_items = RestaurantMenuItem.objects \
+        .prefetch_related('product') \
+        .filter(availability=True) \
+        .order_by('product') \
+        .values_list('product', 'restaurant')
+
+    return set(rest for prod, rest in list(menu_items) if prod==product.id)
 
 class OrderPositionSerializer(ModelSerializer):
     class Meta:
@@ -85,29 +93,51 @@ def product_list_api(request):
 def register_order(request):
     from pprint import pprint
     raw_order = request.data
-    pprint(raw_order)
-    required_keys = ['address', 'firstname', 'lastname', 'phonenumber', 'products']
+    # pprint(raw_order)
+    required_keys = [
+        'address', 'firstname', 'lastname', 'phonenumber', 'products'
+    ]
     serializer = OrderSerializer(data=raw_order)
     serializer.is_valid(raise_exception=True)
     validated_data = serializer.validated_data
     products_fields = list(validated_data['products'])
+
+    # for product in products_fields:
+    #     print(product['product'].id)
     
     for field in products_fields:
         field['current_price'] = field['product'].price
+    # pprint(
+    #     get_product_restaurant(products_fields[0]['product'].id)
+    # )
 
-    pprint(products_fields)
+    
 
     order = Order.objects.create(
         address=validated_data['address'],
         firstname=validated_data['firstname'],
         lastname=validated_data['lastname'],
-        phonenumber=validated_data['phonenumber']
+        phonenumber=validated_data['phonenumber'],
     )
+
+
+
+
+    products = [
+        OrderPosition(order=order, **fields) for fields in products_fields
+    ]
     
-    products = [OrderPosition(order=order, **fields) for fields in products_fields]
     OrderPosition.objects.bulk_create(products)
-    response = OrderSerializer(instance=order)
+
+    restaurants = order.get_restaurants()
+
+    print("!!", restaurants)
+
+    order.restaurants.set(restaurants)
     
 
+    
+    response = OrderSerializer(instance=order)
+    
     return Response(response.data)
 

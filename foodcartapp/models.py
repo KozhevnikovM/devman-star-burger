@@ -43,6 +43,17 @@ class Product(models.Model):
 
     objects = ProductQuerySet.as_manager()
 
+    def get_restaurants(self):
+        menu_items = RestaurantMenuItem.objects \
+            .prefetch_related('product') \
+            .filter(availability=True) \
+            .order_by('product') \
+            .values_list('product', 'restaurant')
+
+        return set(
+            restaurant for product, restaurant in list(menu_items) if product==self.id
+        )
+
     def __str__(self):
         return self.name
 
@@ -52,10 +63,20 @@ class Product(models.Model):
 
 
 class RestaurantMenuItem(models.Model):
-    restaurant = models.ForeignKey(Restaurant, on_delete=models.CASCADE, related_name='menu_items',
-                                   verbose_name="ресторан")
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='menu_items',
-                                verbose_name='продукт')
+    restaurant = models.ForeignKey(
+        Restaurant, 
+        on_delete=models.CASCADE, 
+        related_name='menu_items',
+        verbose_name="ресторан"
+    )
+
+    product = models.ForeignKey(
+        Product, 
+        on_delete=models.CASCADE, 
+        related_name='menu_items',
+        verbose_name='продукт'
+    )
+
     availability = models.BooleanField('в продаже', default=True, db_index=True)
 
     def __str__(self):
@@ -68,6 +89,7 @@ class RestaurantMenuItem(models.Model):
             ['restaurant', 'product']
         ]
 
+
 class OrderQuerySet(models.QuerySet):
     def total(self):
         subtotal = models.ExpressionWrapper(
@@ -79,7 +101,6 @@ class OrderQuerySet(models.QuerySet):
         return self.annotate(
             total=models.Sum(subtotal)
         )
-
 
 class Order(models.Model):
     STATUSES = [
@@ -102,8 +123,19 @@ class Order(models.Model):
     created_time = models.DateTimeField('Заказ создан', default=timezone.now)
     called_time = models.DateTimeField('Время звонка', null=True, blank=True)
     delivered_time = models.DateTimeField('Время доставки', null=True, blank=True)
+    restaurants = models.ManyToManyField(Restaurant, related_name='orders', verbose_name='Ресторан', blank=True)
 
     objects = OrderQuerySet.as_manager()
+
+    def get_restaurants(self):
+        if not self.products:
+            return
+        restaurants = set.intersection(*[
+            product.get_restaurants() for product in self.products.all()
+        ])
+
+        return restaurants
+
     
     def __str__(self):
         return f'{self.firstname} {self.lastname}'
