@@ -7,7 +7,7 @@ from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import views as auth_views
 
-from foodcartapp.models import Product, Restaurant, Order
+from foodcartapp.models import Product, Restaurant, Order, RestaurantMenuItem
 
 class Login(forms.Form):
     username = forms.CharField(
@@ -93,9 +93,32 @@ def view_restaurants(request):
     })
 
 
+def get_restaurants(product):
+    menu_items = RestaurantMenuItem.objects \
+        .filter(availability=True) \
+        .order_by('product') \
+        .values_list('product', 'restaurant')
+
+    suitable_restaurants = {item[0]: set() for item in menu_items}
+
+    for product, restaurant in menu_items:
+        suitable_restaurants[product].add(restaurant)
+
+    return set.intersection(*suitable_restaurants.values())
+
 # @api_view(('GET',))
 @user_passes_test(is_manager, login_url='restaurateur:login')
 def view_orders(request):
+    orders = Order.objects \
+        .prefetch_related('products', 'restaurants') \
+        .total() \
+        .fetch_restaurant_distance()
+
     return render(request, template_name="order_items.html", context={
-        'orders': Order.objects.total()
+        'orders': orders,
     })
+
+
+
+
+    

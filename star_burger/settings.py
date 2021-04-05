@@ -17,6 +17,7 @@ SECRET_KEY = env('SECRET_KEY', 'etirgvonenrfnoerngorenogneongg334g')
 DEBUG = env.bool('DEBUG', True)
 
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', ['127.0.0.1', 'localhost'])
+YANDEX_API_KEY = env.str('YANDEX_API_KEY')
 
 INSTALLED_APPS = [
     'foodcartapp.apps.FoodcartappConfig',

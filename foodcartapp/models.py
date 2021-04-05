@@ -1,12 +1,22 @@
+from geopy import distance
+
 from django.db import models
 from django.core.validators import MinValueValidator
 from phonenumber_field.modelfields import PhoneNumberField
 from django.utils import timezone
+from star_burger.settings import YANDEX_API_KEY
+
+from .helpers import fetch_coordinates
+
 
 class Restaurant(models.Model):
     name = models.CharField('название', max_length=50)
     address = models.CharField('адрес', max_length=100, blank=True)
-    contact_phone = models.CharField('контактный телефон', max_length=50, blank=True)
+    contact_phone = models.CharField(
+        'контактный телефон',
+        max_length=50,
+        blank=True
+    )
 
     def __str__(self):
         return self.name
@@ -36,23 +46,21 @@ class Product(models.Model):
     name = models.CharField('название', max_length=50)
     category = models.ForeignKey(ProductCategory, null=True, blank=True, on_delete=models.SET_NULL,
                                  verbose_name='категория', related_name='products')
-    price = models.DecimalField('цена', max_digits=8, decimal_places=2, validators=[MinValueValidator(0)])
+    price = models.DecimalField(
+        'цена',
+        max_digits=8,
+        decimal_places=2,
+        validators=[MinValueValidator(0)]
+    )
     image = models.ImageField('картинка')
-    special_status = models.BooleanField('спец.предложение', default=False, db_index=True)
+    special_status = models.BooleanField(
+        'спец.предложение',
+        default=False,
+        db_index=True
+    )
     description = models.TextField('описание', max_length=200, blank=True)
 
     objects = ProductQuerySet.as_manager()
-
-    def get_restaurants(self):
-        menu_items = RestaurantMenuItem.objects \
-            .prefetch_related('product') \
-            .filter(availability=True) \
-            .order_by('product') \
-            .values_list('product', 'restaurant')
-
-        return set(
-            restaurant for product, restaurant in list(menu_items) if product==self.id
-        )
 
     def __str__(self):
         return self.name
@@ -64,20 +72,24 @@ class Product(models.Model):
 
 class RestaurantMenuItem(models.Model):
     restaurant = models.ForeignKey(
-        Restaurant, 
-        on_delete=models.CASCADE, 
+        Restaurant,
+        on_delete=models.CASCADE,
         related_name='menu_items',
         verbose_name="ресторан"
     )
 
     product = models.ForeignKey(
-        Product, 
-        on_delete=models.CASCADE, 
+        Product,
+        on_delete=models.CASCADE,
         related_name='menu_items',
         verbose_name='продукт'
     )
 
-    availability = models.BooleanField('в продаже', default=True, db_index=True)
+    availability = models.BooleanField(
+        'в продаже', 
+        default=True, 
+        db_index=True
+    )
 
     def __str__(self):
         return f"{self.restaurant.name} - {self.product.name}"
@@ -93,14 +105,58 @@ class RestaurantMenuItem(models.Model):
 class OrderQuerySet(models.QuerySet):
     def total(self):
         subtotal = models.ExpressionWrapper(
-            models.F('product_position__current_price') \
-                * models.F('product_position__quantity'),
+            models.F('product_position__current_price')
+            *models.F('product_position__quantity'),
             output_field=models.DecimalField()
         )
 
         return self.annotate(
             total=models.Sum(subtotal)
         )
+
+    def fetch_suitable_restourants(self):
+        menu_items = RestaurantMenuItem.objects \
+            .prefetch_related('product') \
+            .filter(availability=True) \
+            .order_by('product') \
+            .values_list('product', 'restaurant')
+
+        product_restaurants = {item[0]: set() for item in menu_items}
+        for product, restaurant in menu_items:
+            product_restaurants[product].add(restaurant)
+
+        for order in self:
+            suitable_restaurants = set.intersection(
+                *[product_restaurants[product.id] for product in order.products.all()]
+            )
+
+            order.suitable_restaurants = Restaurant.objects \
+                .filter(id__in=suitable_restaurants)
+
+        return self
+
+    def fetch_restaurant_distance(self):
+        for order in self.fetch_suitable_restourants():
+            order_coordinates = fetch_coordinates(
+                YANDEX_API_KEY, order.address)
+            distances = [
+                {
+                    'name': restaurant.name,
+                    'distance': distance.distance(
+                        fetch_coordinates(YANDEX_API_KEY, restaurant.address),
+                        order_coordinates
+                    ).km,
+                }
+                for restaurant in order.suitable_restaurants
+            ]
+            order.distances = sorted(
+                distances,
+                key=lambda distance: distance['distance'],
+                reverse=True
+            )
+            print(order.distances)
+        return self
+
 
 class Order(models.Model):
     STATUSES = [
@@ -117,48 +173,57 @@ class Order(models.Model):
     phonenumber = PhoneNumberField()
     address = models.TextField()
     products = models.ManyToManyField(Product, through='OrderPosition')
-    status = models.CharField('Статус', max_length=2, choices=STATUSES, default='N')
-    payment_method = models.CharField('Способ оплаты', max_length=2, choices=PAYMENT_METHOD, default='C')
+    status = models.CharField(
+        'Статус', 
+        max_length=2,
+        choices=STATUSES, 
+        default='N'
+    )
+    payment_method = models.CharField(
+        'Способ оплаты', 
+        max_length=2, 
+        choices=PAYMENT_METHOD, 
+        default='C'
+    )
     comment = models.TextField('Комментарий', blank=True)
     created_time = models.DateTimeField('Заказ создан', default=timezone.now)
     called_time = models.DateTimeField('Время звонка', null=True, blank=True)
-    delivered_time = models.DateTimeField('Время доставки', null=True, blank=True)
-    restaurants = models.ManyToManyField(Restaurant, related_name='orders', verbose_name='Ресторан', blank=True)
+    delivered_time = models.DateTimeField(
+        'Время доставки', null=True, blank=True)
+    restaurants = models.ForeignKey(
+        Restaurant,
+        on_delete=models.CASCADE,
+        related_name='orders',
+        verbose_name='Ресторан',
+        default=None,
+        blank=True,
+        null=True
+    )
 
     objects = OrderQuerySet.as_manager()
 
-    def get_restaurants(self):
-        if not self.products:
-            return
-        restaurants = set.intersection(*[
-            product.get_restaurants() for product in self.products.all()
-        ])
-
-        return restaurants
-
-    
     def __str__(self):
         return f'{self.firstname} {self.lastname}'
-    
+
 
 class OrderPosition(models.Model):
     order = models.ForeignKey(
-        Order, 
-        on_delete=models.SET_NULL, 
-        null=True, 
+        Order,
+        on_delete=models.SET_NULL,
+        null=True,
         verbose_name='Заказ',
         related_name='product_position'
     )
     product = models.ForeignKey(
-        Product, 
-        on_delete=models.SET_NULL, 
-        null=True, 
+        Product,
+        on_delete=models.SET_NULL,
+        null=True,
         verbose_name='Товар'
     )
 
     current_price = models.DecimalField(
-        'Цена на момент заказа', 
-        max_digits=8, 
+        'Цена на момент заказа',
+        max_digits=8,
         decimal_places=2,
         validators=[MinValueValidator(0)],
         blank=True,
@@ -172,7 +237,6 @@ class OrderPosition(models.Model):
 
     def __str__(self):
         return f'{self.product}'
-    
 
     class Meta:
         verbose_name = 'Товар'

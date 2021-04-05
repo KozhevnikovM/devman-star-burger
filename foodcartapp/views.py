@@ -128,15 +128,6 @@ def register_order(request):
     ]
     
     OrderPosition.objects.bulk_create(products)
-
-    restaurants = order.get_restaurants()
-
-    print("!!", restaurants)
-
-    order.restaurants.set(restaurants)
-    
-
-    
     response = OrderSerializer(instance=order)
     
     return Response(response.data)
