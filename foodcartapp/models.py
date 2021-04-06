@@ -278,3 +278,7 @@ class MapPoint(models.Model):
     last_update = models.DateTimeField('Время обновления')
 
     objects = MapPointQuerySet.as_manager()
+
+    def __str__(self):
+        return f'{self.address}'
+    
