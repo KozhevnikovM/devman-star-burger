@@ -1,4 +1,6 @@
+from datetime import datetime
 from geopy import distance
+
 
 from django.db import models
 from django.core.validators import MinValueValidator
@@ -86,8 +88,8 @@ class RestaurantMenuItem(models.Model):
     )
 
     availability = models.BooleanField(
-        'в продаже', 
-        default=True, 
+        'в продаже',
+        default=True,
         db_index=True
     )
 
@@ -106,7 +108,7 @@ class OrderQuerySet(models.QuerySet):
     def total(self):
         subtotal = models.ExpressionWrapper(
             models.F('product_position__current_price')
-            *models.F('product_position__quantity'),
+            * models.F('product_position__quantity'),
             output_field=models.DecimalField()
         )
 
@@ -114,47 +116,57 @@ class OrderQuerySet(models.QuerySet):
             total=models.Sum(subtotal)
         )
 
-    def fetch_suitable_restourants(self):
+    def fetch_restaurant_distance(self):
+        restaurants = Restaurant.objects.all()
+
+        known_points = {
+            address: (lon, lat) for address, lon, lat in
+            MapPoint.objects.values_list('address', 'lon', 'lat')
+        }
+
+        restaurant_points = {
+            restaurant.id: known_points[restaurant.address] 
+                if restaurant.address in known_points.keys()
+                else MapPoint.objects.save_point(restaurant.address) 
+                for restaurant in restaurants
+        }
+
         menu_items = RestaurantMenuItem.objects \
-            .prefetch_related('product') \
             .filter(availability=True) \
             .order_by('product') \
             .values_list('product', 'restaurant')
 
-        product_restaurants = {item[0]: set() for item in menu_items}
+        product_restaurants = {
+            product: set() for product, restaurant in menu_items
+        }
+
         for product, restaurant in menu_items:
             product_restaurants[product].add(restaurant)
 
         for order in self:
-            suitable_restaurants = set.intersection(
+            suitable_restaurants_ids = set.intersection(
                 *[product_restaurants[product.id] for product in order.products.all()]
             )
 
-            order.suitable_restaurants = Restaurant.objects \
-                .filter(id__in=suitable_restaurants)
+            order_point = known_points[order.address] if order.address in known_points.keys() \
+                else MapPoint.objects.save_point(order.address)
 
-        return self
-
-    def fetch_restaurant_distance(self):
-        for order in self.fetch_suitable_restourants():
-            order_coordinates = fetch_coordinates(
-                YANDEX_API_KEY, order.address)
             distances = [
-                {
+                {   
+                    'id': restaurant.id,
                     'name': restaurant.name,
                     'distance': distance.distance(
-                        fetch_coordinates(YANDEX_API_KEY, restaurant.address),
-                        order_coordinates
+                        order_point, restaurant_points[restaurant.id]
                     ).km,
-                }
-                for restaurant in order.suitable_restaurants
+                } for restaurant in restaurants
+                    if restaurant.id in suitable_restaurants_ids
             ]
+
             order.distances = sorted(
                 distances,
                 key=lambda distance: distance['distance'],
-                reverse=True
             )
-            print(order.distances)
+
         return self
 
 
@@ -174,15 +186,15 @@ class Order(models.Model):
     address = models.TextField()
     products = models.ManyToManyField(Product, through='OrderPosition')
     status = models.CharField(
-        'Статус', 
+        'Статус',
         max_length=2,
-        choices=STATUSES, 
+        choices=STATUSES,
         default='N'
     )
     payment_method = models.CharField(
-        'Способ оплаты', 
-        max_length=2, 
-        choices=PAYMENT_METHOD, 
+        'Способ оплаты',
+        max_length=2,
+        choices=PAYMENT_METHOD,
         default='C'
     )
     comment = models.TextField('Комментарий', blank=True)
@@ -209,14 +221,14 @@ class Order(models.Model):
 class OrderPosition(models.Model):
     order = models.ForeignKey(
         Order,
-        on_delete=models.SET_NULL,
+        on_delete=models.CASCADE,
         null=True,
         verbose_name='Заказ',
         related_name='product_position'
     )
     product = models.ForeignKey(
         Product,
-        on_delete=models.SET_NULL,
+        on_delete=models.CASCADE,
         null=True,
         verbose_name='Товар'
     )
@@ -241,3 +253,28 @@ class OrderPosition(models.Model):
     class Meta:
         verbose_name = 'Товар'
         verbose_name_plural = 'Заказанные товары'
+
+
+class MapPointQuerySet(models.QuerySet):
+    def save_point(self, address):
+        current_address, created = self \
+            .get_or_create(
+                address=address,
+                defaults={
+                    'last_update': timezone.now,
+                    **fetch_coordinates(
+                        YANDEX_API_KEY, address
+                    )
+                }
+            )
+
+        return current_address.lon, current_address.lat
+
+
+class MapPoint(models.Model):
+    address = models.CharField('Адрес', max_length=300)
+    lon = models.FloatField('Долгота')
+    lat = models.FloatField('Широта')
+    last_update = models.DateTimeField('Время обновления')
+
+    objects = MapPointQuerySet.as_manager()

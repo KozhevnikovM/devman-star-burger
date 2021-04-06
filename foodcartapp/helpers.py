@@ -8,4 +8,7 @@ def fetch_coordinates(apikey, place):
     found_places = response.json()['response']['GeoObjectCollection']['featureMember']
     most_relevant = found_places[0]
     lon, lat = most_relevant['GeoObject']['Point']['pos'].split(" ")
-    return tuple(map(float, (lon, lat)))
+    return {
+        'lon': float(lon),
+        'lat': float(lat)
+    }
