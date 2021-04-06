@@ -103,16 +103,13 @@ class ProductAdmin(admin.ModelAdmin):
     get_image_list_preview.short_description = 'превью'
 
 
-@admin.register(ProductCategory)
-class ProductAdmin(admin.ModelAdmin):
-    pass
-
 class InlineOrderPosition(admin.TabularInline):
     model = OrderPosition
     extra = 0
     # raw_id_fields = ['product']
     fields = ['product', 'current_price', 'quantity']
     readonly_fields = ['product']
+
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
@@ -127,5 +124,4 @@ class OrderAdmin(admin.ModelAdmin):
         if "next" in request.GET and url_has_allowed_host_and_scheme(request.GET['next'], None):
             redirect_page = request.GET['next']
             return redirect(redirect_page)
-        else:
-            return response
+        return response

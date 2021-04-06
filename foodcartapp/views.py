@@ -1,17 +1,15 @@
-import json
-
 from django.http import JsonResponse
 from django.templatetags.static import static
 from django.db import transaction
 
-from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from rest_framework.serializers import Serializer, ModelSerializer
+from rest_framework.serializers import ModelSerializer
 
 
 from .models import Product
 from .models import Order, OrderPosition, RestaurantMenuItem
+
 
 def get_product_restaurant(product):
     menu_items = RestaurantMenuItem.objects \
@@ -20,7 +18,8 @@ def get_product_restaurant(product):
         .order_by('product') \
         .values_list('product', 'restaurant')
 
-    return set(rest for prod, rest in list(menu_items) if prod==product.id)
+    return set(rest for prod, rest in list(menu_items) if prod == product.id)
+
 
 class OrderPositionSerializer(ModelSerializer):
     class Meta:
@@ -91,27 +90,14 @@ def product_list_api(request):
 @transaction.atomic
 @api_view(['POST'])
 def register_order(request):
-    from pprint import pprint
     raw_order = request.data
-    # pprint(raw_order)
-    required_keys = [
-        'address', 'firstname', 'lastname', 'phonenumber', 'products'
-    ]
     serializer = OrderSerializer(data=raw_order)
     serializer.is_valid(raise_exception=True)
     validated_data = serializer.validated_data
     products_fields = list(validated_data['products'])
 
-    # for product in products_fields:
-    #     print(product['product'].id)
-    
     for field in products_fields:
         field['current_price'] = field['product'].price
-    # pprint(
-    #     get_product_restaurant(products_fields[0]['product'].id)
-    # )
-
-    
 
     order = Order.objects.create(
         address=validated_data['address'],
@@ -120,15 +106,11 @@ def register_order(request):
         phonenumber=validated_data['phonenumber'],
     )
 
-
-
-
     products = [
         OrderPosition(order=order, **fields) for fields in products_fields
     ]
-    
+
     OrderPosition.objects.bulk_create(products)
     response = OrderSerializer(instance=order)
-    
-    return Response(response.data)
 
+    return Response(response.data)

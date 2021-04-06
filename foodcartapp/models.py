@@ -1,11 +1,11 @@
-from datetime import datetime
 from geopy import distance
-
 
 from django.db import models
 from django.core.validators import MinValueValidator
-from phonenumber_field.modelfields import PhoneNumberField
 from django.utils import timezone
+
+from phonenumber_field.modelfields import PhoneNumberField
+
 from star_burger.settings import YANDEX_API_KEY
 
 from .helpers import fetch_coordinates
@@ -21,7 +21,7 @@ class Restaurant(models.Model):
     )
 
     def __str__(self):
-        return self.name
+        return f'{self.name}'
 
     class Meta:
         verbose_name = 'ресторан'
@@ -41,7 +41,7 @@ class ProductCategory(models.Model):
         verbose_name_plural = 'категории'
 
     def __str__(self):
-        return self.name
+        return f'{self.name}'
 
 
 class Product(models.Model):
@@ -65,7 +65,7 @@ class Product(models.Model):
     objects = ProductQuerySet.as_manager()
 
     def __str__(self):
-        return self.name
+        return f'{self.name}'
 
     class Meta:
         verbose_name = 'товар'
@@ -125,10 +125,10 @@ class OrderQuerySet(models.QuerySet):
         }
 
         restaurant_points = {
-            restaurant.id: known_points[restaurant.address] 
-                if restaurant.address in known_points.keys()
-                else MapPoint.objects.save_point(restaurant.address) 
-                for restaurant in restaurants
+            restaurant.id: known_points[restaurant.address]
+            if restaurant.address in known_points.keys()
+            else MapPoint.objects.save_point(restaurant.address)
+            for restaurant in restaurants
         }
 
         menu_items = RestaurantMenuItem.objects \
@@ -152,14 +152,14 @@ class OrderQuerySet(models.QuerySet):
                 else MapPoint.objects.save_point(order.address)
 
             distances = [
-                {   
+                {
                     'id': restaurant.id,
                     'name': restaurant.name,
                     'distance': distance.distance(
                         order_point, restaurant_points[restaurant.id]
                     ).km,
                 } for restaurant in restaurants
-                    if restaurant.id in suitable_restaurants_ids
+                if restaurant.id in suitable_restaurants_ids
             ]
 
             order.distances = sorted(
@@ -257,7 +257,7 @@ class OrderPosition(models.Model):
 
 class MapPointQuerySet(models.QuerySet):
     def save_point(self, address):
-        current_address, created = self \
+        current_address = self \
             .get_or_create(
                 address=address,
                 defaults={
