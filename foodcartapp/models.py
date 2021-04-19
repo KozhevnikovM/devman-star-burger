@@ -180,11 +180,15 @@ class Order(models.Model):
         ('C', 'Наличными при доставке'),
         ('O', 'Картой онлайн')
     ]
-    firstname = models.CharField(max_length=200)
-    lastname = models.CharField(max_length=200)
-    phonenumber = PhoneNumberField()
-    address = models.TextField()
-    products = models.ManyToManyField(Product, through='OrderPosition')
+    firstname = models.CharField('Имя', max_length=200)
+    lastname = models.CharField('Фамилия', max_length=200)
+    phonenumber = PhoneNumberField('Телефон')
+    address = models.TextField('Адрес')
+    products = models.ManyToManyField(
+        Product,
+        through='OrderPosition',
+        related_name='orders',
+        verbose_name='Продукты')
     status = models.CharField(
         'Статус',
         max_length=2,
@@ -214,6 +218,11 @@ class Order(models.Model):
 
     objects = OrderQuerySet.as_manager()
 
+    class Meta():
+        verbose_name = 'Заказ'
+        verbose_name_plural = 'Заказы'
+
+
     def __str__(self):
         return f'{self.firstname} {self.lastname}'
 
@@ -230,7 +239,8 @@ class OrderPosition(models.Model):
         Product,
         on_delete=models.CASCADE,
         null=True,
-        verbose_name='Товар'
+        verbose_name='Товар',
+        related_name='order_possition'
     )
 
     current_price = models.DecimalField(
