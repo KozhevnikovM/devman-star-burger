@@ -183,7 +183,7 @@ class Order(models.Model):
     firstname = models.CharField('Имя', max_length=200)
     lastname = models.CharField('Фамилия', max_length=200)
     phonenumber = PhoneNumberField('Телефон')
-    address = models.TextField('Адрес')
+    address = models.CharField('Адрес', max_length=200)
     products = models.ManyToManyField(
         Product,
         through='OrderPosition',
