@@ -8,7 +8,7 @@ from phonenumber_field.modelfields import PhoneNumberField
 
 from star_burger.settings import YANDEX_API_KEY
 
-from .helpers import fetch_coordinates
+from .geo_utils import fetch_coordinates
 
 
 class Restaurant(models.Model):
@@ -199,7 +199,7 @@ class Order(models.Model):
         'Способ оплаты',
         max_length=2,
         choices=PAYMENT_METHOD,
-        default='C'
+        blank=True
     )
     comment = models.TextField('Комментарий', blank=True)
     created_time = models.DateTimeField('Заказ создан', default=timezone.now)
@@ -211,7 +211,6 @@ class Order(models.Model):
         on_delete=models.CASCADE,
         related_name='orders',
         verbose_name='Ресторан',
-        default=None,
         blank=True,
         null=True
     )
@@ -267,8 +266,8 @@ class OrderPosition(models.Model):
 
 class MapPointQuerySet(models.QuerySet):
     def save_point(self, address):
-        current_address = self \
-            .get_or_create(
+        current_address, created = self \
+            .update_or_create(
                 address=address,
                 defaults={
                     'last_update': timezone.now,
@@ -277,7 +276,7 @@ class MapPointQuerySet(models.QuerySet):
                     )
                 }
             )
-
+        print(current_address)
         return current_address.lon, current_address.lat
 
 
