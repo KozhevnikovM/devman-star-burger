@@ -3,6 +3,7 @@ from geopy import distance
 from django.db import models
 from django.core.validators import MinValueValidator
 from django.utils import timezone
+from django.utils.translation import gettext_lazy
 
 from phonenumber_field.modelfields import PhoneNumberField
 
@@ -171,15 +172,17 @@ class OrderQuerySet(models.QuerySet):
 
 
 class Order(models.Model):
-    STATUSES = [
-        ('N', 'Новый'),
-        ('P', 'В работе'),
-        ('C', 'Выполнен')
-    ]
-    PAYMENT_METHOD = [
-        ('C', 'Наличными при доставке'),
-        ('O', 'Картой онлайн')
-    ]
+    class Status(models.TextChoices):
+        NEW = 'N', gettext_lazy('Наличными при доставке')
+        IN_PROGRESS = 'P', gettext_lazy('В работе')
+        COMPLETE = 'C', gettext_lazy('Выполнен')
+
+    
+    class PaymentMethod(models.TextChoices):
+        CASH = 'C', gettext_lazy('Наличными при доставке')
+        CARD_ONLINE = 'O', gettext_lazy('Картой онлайн')
+
+
     firstname = models.CharField('Имя', max_length=200)
     lastname = models.CharField('Фамилия', max_length=200)
     phonenumber = PhoneNumberField('Телефон')
@@ -188,17 +191,18 @@ class Order(models.Model):
         Product,
         through='OrderPosition',
         related_name='orders',
-        verbose_name='Продукты')
+        verbose_name='Продукты'
+    )
     status = models.CharField(
         'Статус',
         max_length=2,
-        choices=STATUSES,
-        default='N'
+        choices=Status.choices,
+        default=Status.NEW
     )
     payment_method = models.CharField(
         'Способ оплаты',
         max_length=2,
-        choices=PAYMENT_METHOD,
+        choices=PaymentMethod.choices,
         blank=True
     )
     comment = models.TextField('Комментарий', blank=True)
@@ -206,7 +210,7 @@ class Order(models.Model):
     called_time = models.DateTimeField('Время звонка', null=True, blank=True)
     delivered_time = models.DateTimeField(
         'Время доставки', null=True, blank=True)
-    restaurants = models.ForeignKey(
+    restaurant = models.ForeignKey(
         Restaurant,
         on_delete=models.CASCADE,
         related_name='orders',

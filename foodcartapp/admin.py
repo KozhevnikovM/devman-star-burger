@@ -113,7 +113,7 @@ class InlineOrderPosition(admin.TabularInline):
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    raw_id_fields = ['restaurants']
+    raw_id_fields = ['restaurant']
 
     inlines = [
         InlineOrderPosition
