@@ -125,3 +125,6 @@ class OrderAdmin(admin.ModelAdmin):
             redirect_page = request.GET['next']
             return redirect(redirect_page)
         return response
+
+
+admin.site.register(ProductCategory)

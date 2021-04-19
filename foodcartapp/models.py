@@ -107,8 +107,8 @@ class RestaurantMenuItem(models.Model):
 class OrderQuerySet(models.QuerySet):
     def total(self):
         subtotal = models.ExpressionWrapper(
-            models.F('product_position__current_price')
-            * models.F('product_position__quantity'),
+            models.F('product_positions__current_price')
+            * models.F('product_positions__quantity'),
             output_field=models.DecimalField()
         )
 
@@ -233,14 +233,14 @@ class OrderPosition(models.Model):
         on_delete=models.CASCADE,
         null=True,
         verbose_name='Заказ',
-        related_name='product_position'
+        related_name='product_positions'
     )
     product = models.ForeignKey(
         Product,
         on_delete=models.CASCADE,
         null=True,
         verbose_name='Товар',
-        related_name='order_possition'
+        related_name='order_possitions'
     )
 
     current_price = models.DecimalField(
